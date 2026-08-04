@@ -59,6 +59,38 @@ export function validate(event) {
   return { ok: errors.length === 0, errors };
 }
 
+/**
+ * Decide what an incoming event IS, rather than whether to keep it.
+ *
+ * Ingest must never drop an event just because its payload is old. A v1 client
+ * (state markers, `details.duration`, no `sessionId`) is a perfectly normal
+ * thing to have in the field during a staged rollout — and since the backend
+ * ships before the client, it is the EXPECTED state, not an error. Rejecting on
+ * payload shape meant a live v1 build had every event refused at the door and
+ * the whole call's telemetry lost, which is a worse failure than the one this
+ * work set out to fix.
+ *
+ * So the only fatal condition is an unknown event NAME: that is a typo or a
+ * deleted constant, and storing it would just pollute the collection.
+ *
+ * @returns { known, version, errors }
+ *   known:false            → drop it and count it
+ *   version:2              → satisfies the v2 contract
+ *   version:1              → known name, legacy payload; STORE IT, marked v1 so
+ *                            duration aggregations correctly skip it
+ */
+export function classifyEvent(event) {
+  if (!event || typeof event !== 'object' || typeof event.message !== 'string' || event.message === '') {
+    return { known: false, version: null, errors: ['event must be an object with a message string'] };
+  }
+  if (!isKnownEvent(event.message)) {
+    return { known: false, version: null, errors: [`unknown event "${event.message}"`] };
+  }
+
+  const { ok, errors } = validate(event);
+  return { known: true, version: ok ? 2 : 1, errors };
+}
+
 /** Convenience for the dev build: validate and throw on failure. */
 export function assertValid(event) {
   const { ok, errors } = validate(event);

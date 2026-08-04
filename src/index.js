@@ -16,6 +16,6 @@ export {
   CONTRIBUTION_OUTPUT_FIELDS,
   getMetric,
 } from './metrics.js';
-export { validate, assertValid } from './validate.js';
+export { validate, assertValid, classifyEvent } from './validate.js';
 export { computeMetrics, computeContribution } from './compute.js';
 export { SCHEMA_VERSION, MIN_USABLE_VERSION } from './version.js';

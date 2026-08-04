@@ -1,6 +1,6 @@
 {
   "name": "@bitovn/bridge-events",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Canonical event registry, payload schema and derived-metric definitions for Bridge analytics. Single source of truth shared by the room client, the analytics backend and the report UI.",
   "type": "module",
   "main": "./src/index.js",

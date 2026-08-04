@@ -5,7 +5,7 @@ import * as EV from '../src/events.js';
 import { REMOVED_IN_V2 } from '../src/events.js';
 import { SCHEMA, EVENT_NAMES, DURATION_EVENTS } from '../src/schema.js';
 import { KINDS, COUNT, INTERVAL, POINT } from '../src/kinds.js';
-import { validate } from '../src/validate.js';
+import { validate, classifyEvent } from '../src/validate.js';
 
 // Everything exported from events.js that is a plain event-name string.
 const exportedNames = Object.entries(EV)
@@ -113,6 +113,38 @@ test('validate rejects the exact shapes that caused the original bug', () => {
     details: { durationMs: Number.NaN, startedAt: 1 },
   });
   assert.equal(nan.ok, false);
+});
+
+test('classifyEvent keeps v1 payloads instead of dropping them', () => {
+  // REGRESSION: ingest briefly validated every entry against the v2 contract and
+  // dropped whatever failed. Because the backend deploys before the client, the
+  // live v1 build had its ENTIRE telemetry refused at the door and every call's
+  // data was lost. A known name must always be stored; only the version differs.
+  const v1Camera = { message: EV.VIDEO_DURATION, details: { type: 'CAMERA_ON' } };
+  const v1Speak = { message: EV.SPEAK_DURATION, details: { duration: 1200 } };
+  const v1Join = { message: EV.USER_JOINED };
+
+  for (const event of [v1Camera, v1Speak, v1Join]) {
+    const result = classifyEvent(event);
+    assert.equal(result.known, true, `${event.message} must be kept`);
+    assert.equal(result.version, 1, `${event.message} must be stamped v1`);
+  }
+});
+
+test('classifyEvent marks a proper v2 payload as v2', () => {
+  assert.deepEqual(
+    classifyEvent({
+      message: EV.VIDEO_DURATION,
+      details: { durationMs: 1000, startedAt: 1 },
+    }),
+    { known: true, version: 2, errors: [] }
+  );
+});
+
+test('classifyEvent drops only unknown names', () => {
+  assert.equal(classifyEvent({ message: 'TOTALLY_MADE_UP' }).known, false);
+  assert.equal(classifyEvent({ message: 'CAMERA_ON' }).known, false);
+  assert.equal(classifyEvent(null).known, false);
 });
 
 test('validate rejects unknown event names', () => {
