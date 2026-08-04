@@ -1,0 +1,25 @@
+{
+  "name": "@bitovn/bridge-events",
+  "version": "2.0.0",
+  "description": "Canonical event registry, payload schema and derived-metric definitions for Bridge analytics. Single source of truth shared by the room client, the analytics backend and the report UI.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./events": "./src/events.js",
+    "./kinds": "./src/kinds.js",
+    "./schema": "./src/schema.js",
+    "./metrics": "./src/metrics.js",
+    "./validate": "./src/validate.js",
+    "./compute": "./src/compute.js",
+    "./version": "./src/version.js"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test 'test/*.test.js'"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
