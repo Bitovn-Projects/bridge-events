@@ -1,5 +1,6 @@
 import { getSchema, isKnownEvent } from './schema.js';
 import { COUNT } from './kinds.js';
+import { SCHEMA_VERSION } from './version.js';
 
 /**
  * Validate one event against the registry.
@@ -75,9 +76,15 @@ export function validate(event) {
  *
  * @returns { known, version, errors }
  *   known:false            → drop it and count it
- *   version:2              → satisfies the v2 contract
+ *   version:SCHEMA_VERSION → satisfies the current contract
  *   version:1              → known name, legacy payload; STORE IT, marked v1 so
  *                            duration aggregations correctly skip it
+ *
+ * Bitovn/Bridge-issues#1589 — this used to hardcode `2` here instead of
+ * referencing SCHEMA_VERSION, so bumping the constant alone (as v3 did, for
+ * the reconnect/media-state registry additions) wouldn't actually have
+ * changed what a valid event gets stamped with. Referencing the constant
+ * keeps them from drifting apart again on the next bump.
  */
 export function classifyEvent(event) {
   if (!event || typeof event !== 'object' || typeof event.message !== 'string' || event.message === '') {
@@ -88,7 +95,7 @@ export function classifyEvent(event) {
   }
 
   const { ok, errors } = validate(event);
-  return { known: true, version: ok ? 2 : 1, errors };
+  return { known: true, version: ok ? SCHEMA_VERSION : 1, errors };
 }
 
 /** Convenience for the dev build: validate and throw on failure. */

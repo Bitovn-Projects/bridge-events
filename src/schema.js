@@ -108,6 +108,21 @@ export const SCHEMA = Object.freeze({
   [EV.MEDIASOUP_ERROR_ENABLING_SHARE]: count({ optional: ['reason'] }),
   [EV.EXCEPTION_ENABLING_SHARE]: count({ optional: ['reason'] }),
   [EV.ERROR_DISABLING_SHARE]: count({ optional: ['reason'] }),
+
+  // ── Reconnects / media state ─────────────────────────────────────────────
+  [EV.RECONNECT_ATTEMPT]: count({ required: ['sessionId', 'attempt', 'reason'], since: 3 }),
+  [EV.RECONNECT_SUCCEEDED]: count({ required: ['sessionId', 'attempt', 'downtimeMs'], since: 3 }),
+  [EV.RECONNECT_FAILED]: count({ required: ['sessionId', 'attempts'], since: 3 }),
+  // Deliberately NOT built on the duration() helper — that forces
+  // required:['durationMs'], which this event doesn't carry (see events.js's
+  // comment on why this is a discrete state marker, not a measurement). Kept
+  // as its own literal entry rather than stretching duration()'s shape.
+  [EV.MEDIA_STATE_CHANGED]: {
+    kind: POINT,
+    required: ['kind', 'on'],
+    optional: [],
+    since: 3,
+  },
 });
 
 /** Every event name the system knows about. */

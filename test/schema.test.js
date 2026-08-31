@@ -6,6 +6,7 @@ import { REMOVED_IN_V2 } from '../src/events.js';
 import { SCHEMA, EVENT_NAMES, DURATION_EVENTS } from '../src/schema.js';
 import { KINDS, COUNT, INTERVAL, POINT } from '../src/kinds.js';
 import { validate, classifyEvent } from '../src/validate.js';
+import { SCHEMA_VERSION } from '../src/version.js';
 
 // Everything exported from events.js that is a plain event-name string.
 const exportedNames = Object.entries(EV)
@@ -43,7 +44,10 @@ test('COUNT events require no details', () => {
 });
 
 test('POINT and INTERVAL events require durationMs', () => {
+  // MEDIA_STATE_CHANGED is the one documented exception — see the
+  // "MEDIA_STATE_CHANGED is in DURATION_EVENTS" test above for why.
   for (const name of DURATION_EVENTS) {
+    if (name === 'MEDIA_STATE_CHANGED') continue;
     assert.ok(
       SCHEMA[name].required.includes('durationMs'),
       `${name} carries a measurement but does not require durationMs`
@@ -61,15 +65,32 @@ test('INTERVAL events require startedAt', () => {
   }
 });
 
-test('the four duration metrics are exactly the ones the report depends on', () => {
+test('the four original duration metrics are still in DURATION_EVENTS', () => {
   // Regression guard for the original bug: VIDEO_DURATION and
   // SCREENSHARE_DURATION were treated as duration-carrying by the backend while
   // the client emitted them as bare markers. If either ever drops out of this
   // set, the report silently reads 0 again.
-  assert.deepEqual(
-    [...DURATION_EVENTS].sort(),
-    ['MIC_DURATION', 'SCREENSHARE_DURATION', 'SPEAK_DURATION', 'VIDEO_DURATION']
-  );
+  //
+  // Not an exact-equality check any more (Bitovn/Bridge-issues#1589 added a 5th
+  // member, see the next test) — a subset check keeps this guard's original
+  // purpose without re-breaking every time DURATION_EVENTS legitimately grows.
+  const original = ['MIC_DURATION', 'SCREENSHARE_DURATION', 'SPEAK_DURATION', 'VIDEO_DURATION'];
+  for (const name of original) {
+    assert.ok(DURATION_EVENTS.includes(name), `${name} dropped out of DURATION_EVENTS`);
+  }
+});
+
+test('MEDIA_STATE_CHANGED is in DURATION_EVENTS despite carrying no duration', () => {
+  // Bitovn/Bridge-issues#1589 — DURATION_EVENTS is defined as "kind is POINT
+  // or INTERVAL", not "carries durationMs". MEDIA_STATE_CHANGED is a POINT (a
+  // discrete on/off marker, not a measurement) so it gets swept into this set
+  // by that filter even though it has no durationMs field at all. Documented
+  // here rather than silently shipped: any consumer that assumes every member
+  // of DURATION_EVENTS is summable by details.durationMs needs to special-case
+  // this one (or the filter itself needs a narrower definition — out of scope
+  // for #1589, flagged in its PR).
+  assert.ok(DURATION_EVENTS.includes('MEDIA_STATE_CHANGED'));
+  assert.equal(SCHEMA.MEDIA_STATE_CHANGED.required.includes('durationMs'), false);
 });
 
 test('removed v2 names are not resurrected as events', () => {
@@ -131,13 +152,16 @@ test('classifyEvent keeps v1 payloads instead of dropping them', () => {
   }
 });
 
-test('classifyEvent marks a proper v2 payload as v2', () => {
+test('classifyEvent marks a well-formed payload with the current SCHEMA_VERSION', () => {
+  // Bitovn/Bridge-issues#1589 — was hardcoded to the literal 2 here (matching
+  // classifyEvent's own former hardcoding); both now reference SCHEMA_VERSION
+  // so a future bump can't silently drift the two apart again.
   assert.deepEqual(
     classifyEvent({
       message: EV.VIDEO_DURATION,
       details: { durationMs: 1000, startedAt: 1 },
     }),
-    { known: true, version: 2, errors: [] }
+    { known: true, version: SCHEMA_VERSION, errors: [] }
   );
 });
 

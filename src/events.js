@@ -96,6 +96,22 @@ export const MEDIASOUP_ERROR_ENABLING_SHARE = 'MEDIASOUP_ERROR_ENABLING_SHARE';
 export const EXCEPTION_ENABLING_SHARE = 'EXCEPTION_ENABLING_SHARE';
 export const ERROR_DISABLING_SHARE = 'ERROR_DISABLING_SHARE';
 
+// ── Reconnects / media state (v3, Bitovn/Bridge-issues#1589) ───────────────
+// Filed after auditing whether "user B kept rejoining, mic broken" was
+// diagnosable from existing telemetry. It wasn't: RoomClient.js's disconnect/
+// reconnect/failed handlers emitted nothing at all, and _logUserJoinedOnce()'s
+// per-page-load latch meant an in-page reconnect left zero trace while a
+// reload-triggered rejoin was indistinguishable from a fresh join.
+export const RECONNECT_ATTEMPT = 'RECONNECT_ATTEMPT';
+export const RECONNECT_SUCCEEDED = 'RECONNECT_SUCCEEDED';
+export const RECONNECT_FAILED = 'RECONNECT_FAILED';
+// POINT, not derived from MIC/VIDEO_DURATION's INTERVAL boundaries — the #1542
+// self-healer (RoomClient.js's 5s reconciler) can re-open an interval mid-
+// meeting after a spurious close(), which would read as a phantom toggle if a
+// timeline tried to reconstruct on/off state from interval start/end alone.
+// This is the explicit "mic turned on/off at T" row that was missing.
+export const MEDIA_STATE_CHANGED = 'MEDIA_STATE_CHANGED';
+
 /**
  * Removed in v2, listed so a stray reference is an obvious deletion rather than
  * a mystery, and so the CI drift check can flag any repo still using one:
